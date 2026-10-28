@@ -937,7 +937,7 @@ function subscribe() {
 $$('nav button').forEach(button => {
   button.onclick = () => {
     $$('nav button').forEach(item => {
-      item.classList.toggle('on', item === button);
+item.classList.toggle('on', item === button);
     });
 
     $$('.view').forEach(view => {
