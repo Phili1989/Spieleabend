@@ -936,6 +936,7 @@ function subscribe() {
 
 $$('nav button').forEach(button => {
   button.onclick = () => {
+    
     $$('nav button').forEach(item => {
 item.classList.toggle('on', item === button);
     });
