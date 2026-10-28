@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="UNO Kasse">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="manifest" href="manifest.json">
-<title>UNO Punkte & Kasse V11</title>
+<title>UNO Punkte & Kasse V12</title>
 <style>
 :root{--bg:#f1f2f4;--line:#dfe3ea;--text:#07152f;--muted:#64748b;--blue:#2463eb;--green:#009667;--red:#dc2626;--orange:#f59e0b}
 *{box-sizing:border-box}
@@ -22,47 +22,54 @@ h1{font-size:20px;margin:0}h2{font-size:20px;margin:0 0 12px}h3{font-size:16px;m
 .muted{color:var(--muted);font-size:13px}
 .card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 6px 20px #0f172a0a}
 .row{display:flex;align-items:center;gap:8px}.wrap{flex-wrap:wrap}.between{justify-content:space-between}
-.grid{display:grid;grid-template-columns:2fr 1fr;gap:14px}.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.grid{display:grid;grid-template-columns:2fr 1fr;gap:14px}.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}.three{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 button,input{font:inherit;font-size:16px;min-height:44px}
 button{border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer;background:#e9edf3;color:var(--text)}
 button:disabled{opacity:.55;cursor:wait}
-.primary{background:var(--blue);color:#fff}.danger{background:#fff0f0;color:var(--red)}
+.primary{background:var(--blue);color:#fff}.danger{background:#fff0f0;color:var(--red)}.link{background:transparent;color:var(--blue);padding:6px 8px;min-height:32px}
 input{border:1px solid var(--line);border-radius:10px;padding:9px 10px;background:#fff;width:100%}
-.field{display:grid;gap:8px}
+.field{display:grid;gap:8px;align-content:start}
 .hidden{display:none!important}
 nav{display:flex;background:#fff;border-radius:12px;padding:4px;margin-bottom:14px;border:1px solid var(--line)}
 nav button{flex:1;background:transparent;color:var(--muted)}nav button.on{background:#eaf2ff;color:#1d4ed8}
 .view{display:none}.view.on{display:block}
-.pill{display:inline-block;padding:6px 10px;background:#edf4ff;color:#1746a2;border-radius:999px;margin:2px}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;background:#edf4ff;color:#1746a2;border-radius:999px;margin:2px}
+.pill button{min-height:0;padding:0 2px;background:transparent;color:#1746a2}
 .tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:12px;margin-top:10px}
 table{border-collapse:collapse;width:max-content;min-width:100%}
 th,td{padding:8px 6px;text-align:center;border-bottom:1px solid var(--line);white-space:nowrap}th{background:#f8fafc;font-size:13px}
-.score{width:72px;text-align:center}.score.open{border-color:var(--orange);background:#fff9ed}
+.score,.hscore,.qscore{width:72px;text-align:center}.open{border-color:var(--orange)!important;background:#fff9ed!important}
 .total td{background:#eefbf6;font-weight:800}.cash td{background:#eef5ff;color:#1d4ed8;font-weight:800}
+.delround{min-height:32px;padding:4px 9px}
 .bar{display:grid;grid-template-columns:90px 1fr auto;gap:8px;align-items:center;margin:9px 0}
 .track{height:12px;background:#e5e7eb;border-radius:99px;overflow:hidden}.fill{height:100%;background:linear-gradient(90deg,#2463eb,#66a7f6)}
 .stat{border:1px solid var(--line);border-radius:12px;padding:12px}.stat b{display:block;font-size:20px;margin-top:4px}
 .green{color:var(--green)}
 .item{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:8px 0}
+.clickable{cursor:pointer;transition:.15s}.clickable:hover{border-color:#8ab6ff;background:#f6f9ff}
 .notice{padding:12px;border-radius:12px;background:#edf4ff;color:#1746a2;margin-bottom:14px}
 .notice.error{background:#fff0f0;color:#991b1b}
-.status{min-height:20px;margin-top:8px;font-size:14px}
-.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:max(16px,env(safe-area-inset-bottom));background:#07152f;color:#fff;padding:11px 14px;border-radius:10px;opacity:0;pointer-events:none;transition:.2s;max-width:92%;z-index:50}
+.status{min-height:20px;margin-top:4px;font-size:14px}
+.modalbg{display:none;position:fixed;inset:0;background:#07152f99;place-items:center;padding:12px;z-index:40}
+.modalbg.on{display:grid}
+.modal{background:#fff;border-radius:16px;padding:18px;width:min(760px,100%);max-height:90vh;overflow:auto}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:max(16px,env(safe-area-inset-bottom));background:#07152f;color:#fff;padding:11px 14px;border-radius:10px;opacity:0;pointer-events:none;transition:.2s;max-width:92%;z-index:60}
 .toast.on{opacity:1}
-@media(max-width:760px){.grid,.two,.stats{grid-template-columns:1fr}.card{padding:13px}.bar{grid-template-columns:70px 1fr auto;font-size:13px}.summaryCard{order:-1}}
+@media(max-width:760px){.grid,.two,.three,.stats{grid-template-columns:1fr}.card{padding:13px}.bar{grid-template-columns:70px 1fr auto;font-size:13px}.summaryCard{order:-1}}
 </style>
 </head>
 <body>
 <div class="app">
   <header>
-    <div class="brand"><img src="icons/icon-192.png" alt=""><div><h1>UNO Punkte &amp; Kasse</h1><div class="muted">V11 · gemeinsam · live synchronisiert</div></div></div>
+    <div class="brand"><img src="icons/icon-192.png" alt=""><div><h1>UNO Punkte &amp; Kasse</h1><div class="muted">V12 · gemeinsam · live synchronisiert</div></div></div>
     <div id="userBox" class="row hidden"><span id="userEmail" class="muted"></span><button id="logout" type="button">Abmelden</button></div>
   </header>
 
   <div id="banner" class="notice">App wird geladen …</div>
 
+  <!-- ANMELDUNG -->
   <section id="auth" class="card hidden">
-    <div class="two">
+    <div class="three">
       <div class="field">
         <h2>Einloggen</h2>
         <input id="loginEmail" type="email" autocomplete="email" placeholder="E-Mail">
@@ -78,12 +85,19 @@ th,td{padding:8px 6px;text-align:center;border-bottom:1px solid var(--line);whit
         <button id="signup" type="button" class="primary">Registrieren</button>
         <div id="signupStatus" class="status muted"></div>
       </div>
+      <div class="field">
+        <h2>Neues Spiel</h2>
+        <div class="muted">Ohne Konto und ohne Gruppe spielen. Das Ergebnis wird nicht in einer Historie gespeichert.</div>
+        <button type="button" class="openQuick">Neues Spiel starten</button>
+      </div>
     </div>
   </section>
 
+  <!-- GRUPPENAUSWAHL -->
   <section id="groupArea" class="card hidden">
-    <h2>Spielgruppe</h2>
-    <div class="two">
+    <h2>Wie möchtest du spielen?</h2>
+    <div class="three">
+      <div class="field"><h3>Neues Spiel</h3><div class="muted">Schnelles Spiel ohne Gruppe. Keine Speicherung in der Historie.</div><button type="button" class="primary openQuick">Neues Spiel starten</button></div>
       <div class="field"><h3>Gruppe anlegen</h3><input id="groupName" placeholder="z. B. UNO-Abend"><button id="createGroup" type="button" class="primary">Anlegen</button></div>
       <div class="field"><h3>Gruppe beitreten</h3><input id="joinCode" placeholder="Einladungscode"><button id="joinGroup" type="button" class="primary">Beitreten</button></div>
     </div>
@@ -91,6 +105,37 @@ th,td{padding:8px 6px;text-align:center;border-bottom:1px solid var(--line);whit
     <div id="groups" class="row wrap"></div>
   </section>
 
+  <!-- SCHNELLES SPIEL OHNE GRUPPE -->
+  <section id="quickArea" class="hidden">
+    <div class="card row between wrap">
+      <div><b>Neues Spiel (ohne Gruppe)</b><div class="muted">Wird nur auf diesem Gerät zwischengespeichert, nicht in der Historie.</div></div>
+      <button id="quickBack" type="button">Zurück</button>
+    </div>
+    <div id="quickSetup" class="card">
+      <h2>Spieler hinzufügen</h2>
+      <div class="row wrap">
+        <input id="quickName" placeholder="Spielername" style="flex:1;min-width:180px">
+        <button id="quickAdd" type="button" class="primary">Hinzufügen</button>
+        <button id="quickPreset" type="button">Marcel, Marvin, Alex, Philipp</button>
+      </div>
+      <div id="quickChips" class="row wrap" style="margin:12px 0"></div>
+      <button id="quickStart" type="button" class="primary">Spiel starten</button>
+    </div>
+    <div id="quickPlay" class="grid hidden">
+      <div class="card">
+        <div class="row between wrap"><h2>Punkte</h2><button id="quickDelRound" type="button" class="danger">Letzte Runde löschen</button></div>
+        <div class="muted">Zahl eingeben und mit Enter bestätigen. Die nächste Runde öffnet sich automatisch.</div>
+        <div id="quickTable"></div>
+      </div>
+      <aside class="card summaryCard">
+        <h3>Übersicht</h3>
+        <div id="quickSummary"></div>
+        <button id="quickFinish" type="button" class="primary" style="width:100%;margin-top:12px">Spiel beenden</button>
+      </aside>
+    </div>
+  </section>
+
+  <!-- GRUPPENBEREICH -->
   <section id="main" class="hidden">
     <div class="card row between wrap">
       <div><b id="activeGroupName"></b><div class="muted">Einladungscode: <b id="activeCode"></b></div></div>
@@ -120,7 +165,7 @@ th,td{padding:8px 6px;text-align:center;border-bottom:1px solid var(--line);whit
 
     <section id="history" class="view">
       <div class="two" id="historyStats"></div>
-      <div class="card"><h2>Gespielte Abende</h2><div id="historyList"></div></div>
+      <div class="card"><h2>Gespielte Abende</h2><div class="muted">Tippe auf einen Abend, um Details zu sehen, zu bearbeiten oder zu löschen.</div><div id="historyList"></div></div>
     </section>
 
     <section id="bank" class="view">
@@ -133,10 +178,11 @@ th,td{padding:8px 6px;text-align:center;border-bottom:1px solid var(--line);whit
     </section>
   </section>
 </div>
+
+<div id="modalbg" class="modalbg"><div id="modal" class="modal"></div></div>
 <div id="toast" class="toast"></div>
 
-<!-- Supabase-Bibliothek (klassisches Skript, stellt window.supabase bereit) -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="app.js?v=11" defer></script>
+<script src="app.js?v=12" defer></script>
 </body>
 </html>
