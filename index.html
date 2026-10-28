@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="UNO Kasse">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="manifest" href="manifest.json">
-<title>UNO Punkte & Kasse V12</title>
+<title>UNO Punkte & Kasse V13</title>
 <style>
 :root{--bg:#f1f2f4;--line:#dfe3ea;--text:#07152f;--muted:#64748b;--blue:#2463eb;--green:#009667;--red:#dc2626;--orange:#f59e0b}
 *{box-sizing:border-box}
@@ -46,6 +46,8 @@ th,td{padding:8px 6px;text-align:center;border-bottom:1px solid var(--line);whit
 .stat{border:1px solid var(--line);border-radius:12px;padding:12px}.stat b{display:block;font-size:20px;margin-top:4px}
 .green{color:var(--green)}
 .item{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:8px 0}
+.groupRow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:8px 0}
+.groupRow .grow{flex:1;min-width:140px}
 .clickable{cursor:pointer;transition:.15s}.clickable:hover{border-color:#8ab6ff;background:#f6f9ff}
 .notice{padding:12px;border-radius:12px;background:#edf4ff;color:#1746a2;margin-bottom:14px}
 .notice.error{background:#fff0f0;color:#991b1b}
@@ -61,13 +63,12 @@ th,td{padding:8px 6px;text-align:center;border-bottom:1px solid var(--line);whit
 <body>
 <div class="app">
   <header>
-    <div class="brand"><img src="icons/icon-192.png" alt=""><div><h1>UNO Punkte &amp; Kasse</h1><div class="muted">V12 · gemeinsam · live synchronisiert</div></div></div>
+    <div class="brand"><img src="icons/icon-192.png" alt=""><div><h1>UNO Punkte &amp; Kasse</h1><div class="muted">V13 · gemeinsam · live synchronisiert</div></div></div>
     <div id="userBox" class="row hidden"><span id="userEmail" class="muted"></span><button id="logout" type="button">Abmelden</button></div>
   </header>
 
   <div id="banner" class="notice">App wird geladen …</div>
 
-  <!-- ANMELDUNG -->
   <section id="auth" class="card hidden">
     <div class="three">
       <div class="field">
@@ -93,19 +94,17 @@ th,td{padding:8px 6px;text-align:center;border-bottom:1px solid var(--line);whit
     </div>
   </section>
 
-  <!-- GRUPPENAUSWAHL -->
   <section id="groupArea" class="card hidden">
-    <h2>Wie möchtest du spielen?</h2>
+    <h2>Meine Gruppen</h2>
+    <div id="groups"></div>
+    <h2 style="margin-top:18px">Weitere Optionen</h2>
     <div class="three">
       <div class="field"><h3>Neues Spiel</h3><div class="muted">Schnelles Spiel ohne Gruppe. Keine Speicherung in der Historie.</div><button type="button" class="primary openQuick">Neues Spiel starten</button></div>
       <div class="field"><h3>Gruppe anlegen</h3><input id="groupName" placeholder="z. B. UNO-Abend"><button id="createGroup" type="button" class="primary">Anlegen</button></div>
       <div class="field"><h3>Gruppe beitreten</h3><input id="joinCode" placeholder="Einladungscode"><button id="joinGroup" type="button" class="primary">Beitreten</button></div>
     </div>
-    <h3 style="margin-top:16px">Meine Gruppen</h3>
-    <div id="groups" class="row wrap"></div>
   </section>
 
-  <!-- SCHNELLES SPIEL OHNE GRUPPE -->
   <section id="quickArea" class="hidden">
     <div class="card row between wrap">
       <div><b>Neues Spiel (ohne Gruppe)</b><div class="muted">Wird nur auf diesem Gerät zwischengespeichert, nicht in der Historie.</div></div>
@@ -124,7 +123,7 @@ th,td{padding:8px 6px;text-align:center;border-bottom:1px solid var(--line);whit
     <div id="quickPlay" class="grid hidden">
       <div class="card">
         <div class="row between wrap"><h2>Punkte</h2><button id="quickDelRound" type="button" class="danger">Letzte Runde löschen</button></div>
-        <div class="muted">Zahl eingeben und mit Enter bestätigen. Die nächste Runde öffnet sich automatisch.</div>
+        <div class="muted">Sobald alle Spieler einer Runde eine Zahl haben, öffnet sich automatisch die nächste Runde.</div>
         <div id="quickTable"></div>
       </div>
       <aside class="card summaryCard">
@@ -135,7 +134,6 @@ th,td{padding:8px 6px;text-align:center;border-bottom:1px solid var(--line);whit
     </div>
   </section>
 
-  <!-- GRUPPENBEREICH -->
   <section id="main" class="hidden">
     <div class="card row between wrap">
       <div><b id="activeGroupName"></b><div class="muted">Einladungscode: <b id="activeCode"></b></div></div>
@@ -183,6 +181,6 @@ th,td{padding:8px 6px;text-align:center;border-bottom:1px solid var(--line);whit
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="app.js?v=12" defer></script>
+<script src="app.js?v=13" defer></script>
 </body>
 </html>

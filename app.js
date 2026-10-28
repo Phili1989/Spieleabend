@@ -1,6 +1,6 @@
-/* UNO Punkte & Kasse - V12
-   Neu: Neues Spiel ohne Gruppe, Datum beim Spielabend wählbar,
-   Historie mit Details, Bearbeiten und Löschen. */
+/* UNO Punkte & Kasse - V13
+   Neu: Gruppen löschen/verlassen, keine doppelten Gruppen,
+   automatische neue Runde ohne Enter (iPhone). */
 (function () {
   'use strict';
 
@@ -9,6 +9,7 @@
 
   var QUICK_KEY = 'unoQuickGame_v12';
   var PRESET = ['Marcel', 'Marvin', 'Alex', 'Philipp'];
+  var AUTO_DELAY = 1500; // ms Pause nach der letzten Ziffer, dann wird automatisch übernommen
 
   var sb = null;
   var session = null;
@@ -23,7 +24,7 @@
   var reloadTimer = null;
   var appendingRound = false;
   var historyDays = {};
-  var detail = null; // aktuell geöffneter Abend in der Historie
+  var detail = null;
 
   /* =========================================================
      HILFSFUNKTIONEN
@@ -56,7 +57,7 @@
     var t = $('#toast');
     t.textContent = text; t.classList.add('on');
     clearTimeout(t._timer);
-    t._timer = setTimeout(function () { t.classList.remove('on'); }, 2600);
+    t._timer = setTimeout(function () { t.classList.remove('on'); }, 3000);
   }
   function germanError(err) {
     var m = (err && (err.message || err.error_description)) || String(err || 'Unbekannter Fehler');
@@ -65,7 +66,8 @@
     if (/User already registered/i.test(m)) return 'Für diese E-Mail existiert bereits ein Konto. Bitte einloggen.';
     if (/Password should be at least/i.test(m)) return 'Das Passwort ist zu kurz.';
     if (/rate limit/i.test(m)) return 'Zu viele Versuche. Bitte einige Minuten warten.';
-    if (/one_active_game_per_group|duplicate key/i.test(m)) return 'In dieser Gruppe läuft bereits ein Spielabend.';
+    if (/one_active_game_per_group/i.test(m)) return 'In dieser Gruppe läuft bereits ein Spielabend.';
+    if (/Could not find the function|function .* does not exist/i.test(m)) return 'Datenbank-Update fehlt: Bitte supabase-update-v13.sql in Supabase ausführen.';
     if (/Failed to fetch|NetworkError/i.test(m)) return 'Keine Verbindung zu Supabase. Bitte Internet prüfen.';
     return m;
   }
@@ -88,7 +90,6 @@
     }).join('');
   }
 
-  /* Bildschirme: auth | groups | quick | main */
   var currentScreen = null, screenBeforeQuick = 'auth';
   function screen(name) {
     currentScreen = name;
@@ -102,7 +103,7 @@
   window.addEventListener('unhandledrejection', function (e) { banner('<b>Technischer Fehler:</b> ' + esc(germanError(e.reason)), true); });
 
   /* =========================================================
-     1) NEUES SPIEL OHNE GRUPPE (nur lokal, keine Historie)
+     NEUES SPIEL OHNE GRUPPE (nur lokal)
   ========================================================= */
 
   var quick = loadQuick();
@@ -132,14 +133,12 @@
   function renderQuick() {
     show('#quickSetup', !quick.started);
     show('#quickPlay', quick.started);
-
     $('#quickChips').innerHTML = quick.players.length
       ? quick.players.map(function (p, i) {
           return '<span class="pill">' + esc(p) + '<button type="button" data-qx="' + i + '" aria-label="entfernen">×</button></span>';
         }).join('')
       : '<span class="muted">Noch keine Spieler.</span>';
     $('#quickStart').disabled = quick.players.length < 2;
-
     if (!quick.started) return;
 
     var t = quickTotals();
@@ -148,7 +147,7 @@
     quick.rounds.forEach(function (r, ri) {
       h += '<tr><td>' + (ri + 1) + '</td>' + quick.players.map(function (_, pi) {
         var v = r[pi] == null ? '' : r[pi];
-        return '<td><input class="qscore' + (v === '' ? ' open' : '') + '" type="number" inputmode="numeric" enterkeyhint="next" min="0" value="' +
+        return '<td><input class="qscore' + (v === '' ? ' open' : '') + '" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="next" value="' +
           v + '" data-r="' + ri + '" data-p="' + pi + '"></td>';
       }).join('') + '</tr>';
     });
@@ -159,13 +158,11 @@
   }
 
   function renderQuickSummary() {
-    var t = quickTotals();
-    var sum = t.reduce(function (a, b) { return a + b; }, 0);
+    var t = quickTotals(), sum = t.reduce(function (a, b) { return a + b; }, 0);
     $('#quickSummary').innerHTML = barsHtml(quick.players, t, function (v) { return v + ' · ' + eur(v / 30); }) +
       '<div class="item row between"><b>Gesamtkasse</b><b class="green">' + eur(sum / 30) + '</b></div>';
-    var cells = $$('#quickTable .total td').slice(1), cash = $$('#quickTable .cash td').slice(1);
-    cells.forEach(function (td, i) { td.textContent = t[i]; });
-    cash.forEach(function (td, i) { td.textContent = eur(t[i] / 30); });
+    $$('#quickTable .total td').slice(1).forEach(function (td, i) { td.textContent = t[i]; });
+    $$('#quickTable .cash td').slice(1).forEach(function (td, i) { td.textContent = eur(t[i] / 30); });
   }
 
   function quickAdd(name) {
@@ -182,11 +179,23 @@
 
   function quickCommit(el) {
     var r = +el.dataset.r, p = +el.dataset.p, raw = el.value.trim();
-    if (raw !== '' && (!isFinite(Number(raw)) || Number(raw) < 0)) { toast('Bitte eine Zahl ab 0 eingeben.'); el.value = quick.rounds[r][p]; return false; }
-    var v = raw === '' ? '' : Math.round(Number(raw));
+    if (!quick.rounds[r]) return false;
+    if (raw !== '' && !/^\d+$/.test(raw)) { toast('Bitte nur ganze Zahlen ab 0 eingeben.'); el.value = quick.rounds[r][p]; return false; }
+    var v = raw === '' ? '' : parseInt(raw, 10);
     quick.rounds[r][p] = v; el.value = v;
     el.classList.toggle('open', v === '');
     saveQuick(); renderQuickSummary();
+    return true;
+  }
+
+  /* Automatische neue Runde, wenn die letzte Runde komplett ist */
+  function quickAutoRound(r) {
+    var last = quick.rounds.length - 1;
+    if (r !== last) return false;
+    if (quick.rounds[last].some(function (v) { return v === '' || v == null; })) return false;
+    quick.rounds.push(quick.players.map(function () { return ''; }));
+    saveQuick(); renderQuick(); quickFocus(last + 1, 0);
+    toast('Neue Runde gestartet.');
     return true;
   }
 
@@ -205,20 +214,32 @@
       quick.started = true; quick.rounds = [quick.players.map(function () { return ''; })];
       saveQuick(); renderQuick(); quickFocus(0, 0);
     });
-    $('#quickTable').addEventListener('change', function (e) { if (e.target.classList.contains('qscore')) quickCommit(e.target); });
+
+    // iPhone: nach kurzer Tipp-Pause automatisch übernehmen
+    $('#quickTable').addEventListener('input', function (e) {
+      var el = e.target; if (!el.classList.contains('qscore')) return;
+      clearTimeout(el._t);
+      el._t = setTimeout(function () { if (quickCommit(el)) quickAutoRound(+el.dataset.r); }, AUTO_DELAY);
+    });
+    // Feld verlassen (Tippen auf anderes Feld / "Fertig")
+    $('#quickTable').addEventListener('change', function (e) {
+      var el = e.target; if (!el.classList.contains('qscore')) return;
+      clearTimeout(el._t);
+      if (quickCommit(el)) quickAutoRound(+el.dataset.r);
+    });
+    // PC: Enter
     $('#quickTable').addEventListener('keydown', function (e) {
       if (!e.target.classList.contains('qscore') || e.key !== 'Enter') return;
       e.preventDefault();
-      var el = e.target; if (!quickCommit(el)) return;
+      var el = e.target; clearTimeout(el._t);
+      if (!quickCommit(el)) return;
       var r = +el.dataset.r, p = +el.dataset.p;
       if (p < quick.players.length - 1) { quickFocus(r, p + 1); return; }
       var open = quick.rounds[r].indexOf('');
       if (open > -1) { quickFocus(r, open); toast('Bitte offene Eingabe ergänzen.'); return; }
-      if (r === quick.rounds.length - 1) {
-        quick.rounds.push(quick.players.map(function () { return ''; }));
-        saveQuick(); renderQuick(); quickFocus(r + 1, 0);
-      } else quickFocus(r + 1, 0);
+      if (!quickAutoRound(r)) quickFocus(r + 1, 0);
     });
+
     $('#quickDelRound').addEventListener('click', function () {
       if (!quick.rounds.length || !confirm('Letzte Runde löschen?')) return;
       quick.rounds.pop();
@@ -237,8 +258,8 @@
         '<div class="row wrap" style="margin-top:12px"><button type="button" class="primary" id="quickDone">Spiel schließen</button>' +
         '<button type="button" id="quickContinue">Weiterspielen</button></div>');
       $('#quickDone').addEventListener('click', function () {
-        var keepPlayers = quick.players.slice();
-        resetQuick(); quick.players = keepPlayers; saveQuick();
+        var keep = quick.players.slice();
+        resetQuick(); quick.players = keep; saveQuick();
         closeModal(); renderQuick();
       });
       $('#quickContinue').addEventListener('click', closeModal);
@@ -263,8 +284,9 @@
 
     if (!window.supabase || typeof window.supabase.createClient !== 'function') {
       banner('<b>Keine Verbindung zur Online-Funktion.</b> Bitte Internet prüfen und neu laden. ' +
-        '<button type="button" class="link openQuickBanner">Trotzdem neues Spiel ohne Gruppe starten</button>', true);
-      bindBannerQuick(); return;
+        '<button type="button" class="link" id="bannerQuick">Trotzdem neues Spiel ohne Gruppe starten</button>', true);
+      $('#bannerQuick').addEventListener('click', openQuick);
+      return;
     }
 
     var cfg;
@@ -288,15 +310,9 @@
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('./service-worker.js', { updateViaCache: 'none' }).catch(function () {});
   }
 
-  function bindBannerQuick() {
-    var b = document.querySelector('.openQuickBanner');
-    if (b) b.addEventListener('click', openQuick);
-  }
-
   function applySession() {
     show('#userBox', !!session);
     $('#userEmail').textContent = session && session.user ? session.user.email : '';
-
     if (!session) {
       loadedForUser = null; activeGroup = null;
       if (currentScreen !== 'quick') screen('auth');
@@ -304,7 +320,7 @@
     }
     if (loadedForUser !== session.user.id) {
       loadedForUser = session.user.id;
-      if (currentScreen !== 'quick') loadGroups(); else loadGroups(true);
+      loadGroups(currentScreen === 'quick');
     }
   }
 
@@ -321,16 +337,32 @@
     $('#finish').addEventListener('click', finishGame);
 
     $('#groups').addEventListener('click', function (e) {
-      var btn = e.target.closest('[data-g]'); if (!btn) return;
-      var g = groups.filter(function (x) { return x.id === btn.dataset.g; })[0];
-      if (g) selectGroup(g);
+      var open = e.target.closest('[data-g]');
+      var del = e.target.closest('[data-delg]');
+      var leave = e.target.closest('[data-leaveg]');
+      if (open) { var g = groups.filter(function (x) { return x.id === open.dataset.g; })[0]; if (g) selectGroup(g); }
+      if (del) deleteGroup(del.dataset.delg, del);
+      if (leave) leaveGroup(leave.dataset.leaveg, leave);
     });
 
+    // iPhone: nach kurzer Tipp-Pause automatisch speichern + ggf. neue Runde
+    $('#scoreArea').addEventListener('input', function (e) {
+      var el = e.target; if (!el.classList.contains('score')) return;
+      clearTimeout(el._t);
+      el._t = setTimeout(function () { saveScore(el, 'auto'); }, AUTO_DELAY);
+    });
+    // Feld verlassen ("Fertig" oder anderes Feld antippen)
+    $('#scoreArea').addEventListener('change', function (e) {
+      var el = e.target; if (!el.classList.contains('score')) return;
+      clearTimeout(el._t);
+      saveScore(el, 'auto');
+    });
+    // PC: Enter
     $('#scoreArea').addEventListener('keydown', function (e) {
       if (!e.target.classList.contains('score') || e.key !== 'Enter') return;
-      e.preventDefault(); saveScore(e.target, true);
+      e.preventDefault(); clearTimeout(e.target._t);
+      saveScore(e.target, 'enter');
     });
-    $('#scoreArea').addEventListener('change', function (e) { if (e.target.classList.contains('score')) saveScore(e.target, false); });
 
     $('#historyList').addEventListener('click', function (e) {
       var it = e.target.closest('[data-day]'); if (it) openDetail(it.dataset.day);
@@ -384,25 +416,58 @@
   }
 
   /* =========================================================
-     GRUPPEN
+     GRUPPEN: anzeigen, anlegen, beitreten, löschen, verlassen
   ========================================================= */
 
   async function loadGroups(silent) {
     var res = await sb.from('group_members').select('group_id, role, groups(id, name, invite_code)').order('joined_at');
     if (res.error) { toast(germanError(res.error)); return; }
     groups = (res.data || []).filter(function (r) { return r.groups; }).map(function (r) {
-      return { id: r.groups.id, name: r.groups.name, invite_code: r.groups.invite_code, role: r.role };
+      return { id: r.groups.id, name: r.groups.name, invite_code: r.groups.invite_code, role: r.role, games: 0 };
     });
-    $('#groups').innerHTML = groups.length
-      ? groups.map(function (g) { return '<button type="button" class="primary" data-g="' + g.id + '">' + esc(g.name) + '</button>'; }).join('')
-      : '<span class="muted">Noch keine Gruppe.</span>';
+
+    // Anzahl Spielabende je Gruppe ermitteln (hilft bei doppelten Gruppen)
+    if (groups.length) {
+      var gd = await sb.from('game_days').select('id, group_id').in('group_id', groups.map(function (g) { return g.id; }));
+      (gd.data || []).forEach(function (row) {
+        groups.forEach(function (g) { if (g.id === row.group_id) g.games++; });
+      });
+    }
+
+    var names = {}, hasDuplicates = false;
+    groups.forEach(function (g) {
+      var k = g.name.trim().toLowerCase();
+      if (names[k]) hasDuplicates = true;
+      names[k] = true;
+    });
+
+    $('#groups').innerHTML = (hasDuplicates
+      ? '<div class="notice">Du hast mehrere Gruppen mit gleichem Namen. Behalte die Gruppe mit deinen Spielabenden und lösche die überflüssige.</div>'
+      : '') +
+      (groups.length ? groups.map(function (g) {
+        var owner = g.role === 'owner';
+        return '<div class="groupRow"><div class="grow"><b>' + esc(g.name) + '</b><div class="muted">Code ' + esc(g.invite_code) +
+          ' · ' + g.games + ' Spielabend' + (g.games === 1 ? '' : 'e') + ' · ' + (owner ? 'Ersteller' : 'Mitglied') + '</div></div>' +
+          '<button type="button" class="primary" data-g="' + g.id + '">Öffnen</button>' +
+          (owner
+            ? '<button type="button" class="danger" data-delg="' + g.id + '">Löschen</button>'
+            : '<button type="button" class="danger" data-leaveg="' + g.id + '">Verlassen</button>') +
+          '</div>';
+      }).join('') : '<div class="muted">Noch keine Gruppe.</div>');
+
     if (!silent) screen('groups');
   }
 
   async function createGroup() {
-    var name = $('#groupName').value.trim(); if (!name) { toast('Bitte Gruppennamen eingeben.'); return; }
-    var btn = $('#createGroup'); setBusy(btn, true);
-    var res = await sb.rpc('create_group', { p_name: name }); setBusy(btn, false);
+    var name = $('#groupName').value.trim();
+    if (!name) { toast('Bitte Gruppennamen eingeben.'); return; }
+    var exists = groups.some(function (g) { return g.name.trim().toLowerCase() === name.toLowerCase(); });
+    if (exists) { toast('Eine Gruppe mit diesem Namen hast du bereits.'); return; }
+    var btn = $('#createGroup');
+    if (btn.disabled) return;
+    setBusy(btn, true);
+    var res = await sb.rpc('create_group', { p_name: name });
+    setBusy(btn, false);
     if (res.error) { toast(germanError(res.error)); return; }
     $('#groupName').value = '';
     await loadGroups(true);
@@ -411,12 +476,37 @@
 
   async function joinGroup() {
     var code = $('#joinCode').value.trim().toUpperCase(); if (!code) { toast('Bitte Einladungscode eingeben.'); return; }
-    var btn = $('#joinGroup'); setBusy(btn, true);
+    var btn = $('#joinGroup'); if (btn.disabled) return;
+    setBusy(btn, true);
     var res = await sb.rpc('join_group', { p_invite_code: code }); setBusy(btn, false);
     if (res.error) { toast(germanError(res.error)); return; }
     $('#joinCode').value = '';
     await loadGroups(true);
     var g = groups.filter(function (x) { return x.id === res.data; })[0]; if (g) selectGroup(g);
+  }
+
+  async function deleteGroup(id, btn) {
+    var g = groups.filter(function (x) { return x.id === id; })[0]; if (!g) return;
+    var msg = 'Gruppe „' + g.name + '“ (Code ' + g.invite_code + ') endgültig löschen?\n\n' +
+      'Dabei werden auch ' + g.games + ' Spielabend' + (g.games === 1 ? '' : 'e') + ' samt Historie und Kasse für alle Mitglieder gelöscht.';
+    if (!confirm(msg)) return;
+    setBusy(btn, true);
+    var res = await sb.rpc('delete_group', { p_group_id: id });
+    setBusy(btn, false);
+    if (res.error) { toast(germanError(res.error)); return; }
+    toast('Gruppe gelöscht.');
+    await loadGroups();
+  }
+
+  async function leaveGroup(id, btn) {
+    var g = groups.filter(function (x) { return x.id === id; })[0]; if (!g) return;
+    if (!confirm('Gruppe „' + g.name + '“ verlassen?')) return;
+    setBusy(btn, true);
+    var res = await sb.rpc('leave_group', { p_group_id: id });
+    setBusy(btn, false);
+    if (res.error) { toast(germanError(res.error)); return; }
+    toast('Gruppe verlassen.');
+    await loadGroups();
   }
 
   async function selectGroup(g) {
@@ -450,7 +540,7 @@
   }
 
   /* =========================================================
-     SPIELDATEN EINES ABENDS LADEN (aktiv oder Historie)
+     SPIELDATEN LADEN
   ========================================================= */
 
   async function fetchGameData(gameId) {
@@ -500,8 +590,11 @@
   }
 
   function renderGame() {
-    var a = document.activeElement;
-    var focused = a && a.classList && a.classList.contains('score') ? { r: a.dataset.round, p: a.dataset.player } : null;
+    // Feld, in dem gerade getippt wird, inkl. noch nicht gespeichertem Wert merken
+    var a = document.activeElement, focused = null;
+    if (a && a.classList && a.classList.contains('score')) {
+      focused = { r: a.dataset.round, p: a.dataset.player, v: a.value };
+    }
 
     $('#newGame').classList.toggle('hidden', !!activeGame);
     $('#finish').classList.toggle('hidden', !activeGame);
@@ -514,7 +607,8 @@
     }
 
     $('#gameMeta').innerHTML = '<div class="row wrap between"><span class="muted">Spielabend vom <b>' + dateDe(activeGame.game_date) +
-      '</b> · Zahl eingeben und mit Enter bestätigen</span><button type="button" class="link" id="changeDate">Datum ändern</button></div>';
+      '</b> · Sobald alle Spieler eine Zahl haben, startet automatisch die nächste Runde.</span>' +
+      '<button type="button" class="link" id="changeDate">Datum ändern</button></div>';
     $('#changeDate').addEventListener('click', changeActiveDate);
 
     var h = '<div class="tablewrap"><table><tr><th>Runde</th>' +
@@ -523,7 +617,7 @@
       h += '<tr><td>' + r.round_number + '</td>';
       gamePlayers.forEach(function (gp) {
         var s = findScore(scores, r.id, gp.player_id), v = s && s.points != null ? s.points : '';
-        h += '<td><input class="score' + (v === '' ? ' open' : '') + '" type="number" inputmode="numeric" enterkeyhint="next" min="0" step="1" value="' +
+        h += '<td><input class="score' + (v === '' ? ' open' : '') + '" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="next" value="' +
           v + '" data-round="' + r.id + '" data-player="' + gp.player_id + '"></td>';
       });
       h += '</tr>';
@@ -536,7 +630,7 @@
 
     if (focused) {
       var el = document.querySelector('.score[data-round="' + focused.r + '"][data-player="' + focused.p + '"]');
-      if (el) el.focus();
+      if (el) { el.value = focused.v; el.focus(); }
     }
   }
 
@@ -548,7 +642,6 @@
     $$('#scoreArea .cash td').slice(1).forEach(function (td, i) { td.textContent = eur(t[i] / 30); });
   }
 
-  /* 2) Datum beim Start wählen */
   function askStartGame() {
     if (!activeGroup || activeGame) return;
     openModal('<h2>Neuen Spielabend starten</h2>' +
@@ -564,7 +657,8 @@
   async function startGame() {
     var date = $('#startDate').value;
     if (!date) { toast('Bitte ein Datum wählen.'); return; }
-    var btn = $('#confirmStart'); setBusy(btn, true);
+    var btn = $('#confirmStart'); if (btn.disabled) return;
+    setBusy(btn, true);
     var res = await sb.rpc('start_game_day', { p_group_id: activeGroup.id, p_game_date: date });
     setBusy(btn, false);
     if (res.error) { toast(germanError(res.error)); return; }
@@ -588,36 +682,53 @@
     });
   }
 
-  async function saveScore(el, advance) {
-    if (!session || !activeGame) return;
+  /* mode: 'enter' (PC-Taste) oder 'auto' (Tipp-Pause / Feld verlassen) */
+  async function saveScore(el, mode) {
+    if (!session || !activeGame || !el.isConnected) return;
     var raw = el.value.trim(), points = null;
     if (raw !== '') {
-      var n = Number(raw);
-      if (!isFinite(n) || n < 0) { toast('Bitte eine Zahl ab 0 eingeben.'); return; }
-      points = Math.round(n); el.value = String(points);
+      if (!/^\d+$/.test(raw)) { toast('Bitte nur ganze Zahlen ab 0 eingeben.'); return; }
+      points = parseInt(raw, 10); el.value = String(points);
     }
     var roundId = el.dataset.round, playerId = el.dataset.player;
     var s = findScore(scores, roundId, playerId);
+    var unchanged = s && s.points === points;
     if (s) s.points = points; else scores.push({ round_id: roundId, player_id: playerId, points: points });
     el.classList.toggle('open', points == null);
     renderSummary();
 
-    var res = await sb.from('round_scores').upsert(
-      { round_id: roundId, player_id: playerId, points: points, updated_by: session.user.id, updated_at: new Date().toISOString() },
-      { onConflict: 'round_id,player_id' });
-    if (res.error) { toast(germanError(res.error)); return; }
-    if (!advance) return;
+    if (!unchanged) {
+      var res = await sb.from('round_scores').upsert(
+        { round_id: roundId, player_id: playerId, points: points, updated_by: session.user.id, updated_at: new Date().toISOString() },
+        { onConflict: 'round_id,player_id' });
+      if (res.error) { toast(germanError(res.error)); return; }
+    }
 
+    if (mode === 'auto') { await maybeAutoRound(roundId); return; }
+
+    // PC / Enter: zum nächsten Feld springen
     var row = el.closest('tr');
     var inputs = row ? Array.prototype.slice.call(row.querySelectorAll('.score')) : [];
     var idx = inputs.indexOf(el);
     if (idx > -1 && idx < inputs.length - 1) { inputs[idx + 1].focus(); inputs[idx + 1].select(); return; }
     var firstOpen = inputs.filter(function (i) { return i.value.trim() === ''; })[0];
     if (firstOpen) { firstOpen.focus(); toast('Bitte offene Eingabe ergänzen.'); return; }
+    if (!(await maybeAutoRound(roundId))) {
+      var all = $$('.score'), pos = all.indexOf(el); if (all[pos + 1]) all[pos + 1].focus();
+    }
+  }
 
+  /* Neue Runde, sobald in der letzten Runde alle Spieler eine Zahl haben */
+  async function maybeAutoRound(roundId) {
     var last = rounds[rounds.length - 1];
-    if (last && last.id === roundId) await appendRound();
-    else { var all = $$('.score'), pos = all.indexOf(el); if (all[pos + 1]) all[pos + 1].focus(); }
+    if (!last || last.id !== roundId) return false;
+    var complete = gamePlayers.every(function (gp) {
+      var s = findScore(scores, last.id, gp.player_id);
+      return s && s.points != null;
+    });
+    if (!complete) return false;
+    await appendRound();
+    return true;
   }
 
   async function appendRound() {
@@ -628,14 +739,16 @@
     await loadGame();
     appendingRound = false;
     var last = rounds[rounds.length - 1];
-    if (last) { var el = document.querySelector('.score[data-round="' + last.id + '"]'); if (el) { el.focus(); el.scrollIntoView({ block: 'center' }); } }
+    if (last) {
+      var el = document.querySelector('.score[data-round="' + last.id + '"]');
+      if (el) { el.focus(); el.scrollIntoView({ block: 'center' }); }
+    }
     toast('Neue Runde gestartet.');
   }
 
   async function finishGame() {
     if (!activeGame || !confirm('Spielabend jetzt beenden und in die Historie übernehmen?')) return;
     var btn = $('#finish'); setBusy(btn, true);
-    // Leere letzte Runde entfernen, damit sie nicht in der Historie steht
     var last = rounds[rounds.length - 1];
     if (last && rounds.length > 1) {
       var empty = gamePlayers.every(function (gp) { var s = findScore(scores, last.id, gp.player_id); return !s || s.points == null; });
@@ -649,7 +762,7 @@
   }
 
   /* =========================================================
-     3) HISTORIE: ÜBERSICHT, DETAILS, BEARBEITEN, LÖSCHEN
+     HISTORIE
   ========================================================= */
 
   async function loadHistory() {
@@ -719,12 +832,10 @@
 
     var h = '<div class="row between wrap"><h2>Spielabend vom ' + dateDe(d.date) + '</h2>' +
       '<button type="button" id="detClose">Schließen</button></div>';
-
     if (edit) {
       h += '<div class="field" style="max-width:260px"><label for="detDate"><b>Datum</b></label><input id="detDate" type="date" value="' + d.date + '"></div>' +
         '<div class="muted" style="margin-top:8px">Werte ändern und unten auf „Änderungen speichern“ tippen. Mit ✕ wird eine Runde gelöscht.</div>';
     }
-
     h += '<div class="tablewrap"><table><tr><th>Runde</th>' +
       d.players.map(function (gp) { return '<th>' + esc(nameOf(gp)) + '</th>'; }).join('') + (edit ? '<th></th>' : '') + '</tr>';
     visibleRounds.forEach(function (r, i) {
@@ -732,7 +843,7 @@
       d.players.forEach(function (gp) {
         var s = findScore(d.scores, r.id, gp.player_id), v = s && s.points != null ? s.points : '';
         h += edit
-          ? '<td><input class="hscore' + (v === '' ? ' open' : '') + '" type="number" inputmode="numeric" min="0" value="' + v +
+          ? '<td><input class="hscore' + (v === '' ? ' open' : '') + '" type="text" inputmode="numeric" pattern="[0-9]*" value="' + v +
             '" data-round="' + r.id + '" data-player="' + gp.player_id + '"></td>'
           : '<td>' + (v === '' ? '–' : v) + '</td>';
       });
@@ -756,7 +867,6 @@
 
     $('#modal').innerHTML = h;
     $('#detClose').addEventListener('click', closeModal);
-
     if (!edit) {
       $('#detEdit').addEventListener('click', function () { detail.edit = true; detail.deleted = {}; renderDetail(); });
       $('#detDelete').addEventListener('click', deleteDetail);
@@ -767,8 +877,9 @@
   }
 
   function applyLocal(inp) {
-    var raw = inp.value.trim(), v = raw === '' ? null : Math.max(0, Math.round(Number(raw)));
-    if (raw !== '' && !isFinite(Number(raw))) return;
+    var raw = inp.value.trim();
+    if (raw !== '' && !/^\d+$/.test(raw)) return;
+    var v = raw === '' ? null : parseInt(raw, 10);
     var s = findScore(detail.scores, inp.dataset.round, inp.dataset.player);
     if (s) s.points = v; else detail.scores.push({ round_id: inp.dataset.round, player_id: inp.dataset.player, points: v });
   }
@@ -780,9 +891,9 @@
       var upserts = [];
       $$('.hscore').forEach(function (inp) {
         var raw = inp.value.trim();
-        if (raw !== '' && (!isFinite(Number(raw)) || Number(raw) < 0)) throw new Error('Ungültige Punktzahl: ' + raw);
+        if (raw !== '' && !/^\d+$/.test(raw)) throw new Error('Ungültige Punktzahl: ' + raw);
         upserts.push({ round_id: inp.dataset.round, player_id: inp.dataset.player,
-          points: raw === '' ? null : Math.round(Number(raw)), updated_by: session.user.id, updated_at: new Date().toISOString() });
+          points: raw === '' ? null : parseInt(raw, 10), updated_by: session.user.id, updated_at: new Date().toISOString() });
       });
       if (upserts.length) {
         var u = await sb.from('round_scores').upsert(upserts, { onConflict: 'round_id,player_id' });
@@ -799,9 +910,8 @@
         if (g.error) throw g.error;
       }
       await loadHistory();
-      var id = d.id;
       toast('Änderungen gespeichert.');
-      await openDetail(id);
+      await openDetail(d.id);
     } catch (err) {
       setBusy(btn, false);
       toast(germanError(err));
