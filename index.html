@@ -1,11 +1,142 @@
-<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#2463eb"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="UNO Kasse"><link rel="apple-touch-icon" href="icons/icon-180.png"><link rel="manifest" href="manifest.json"><title>UNO Punkte & Kasse V10</title><style>
-:root{--bg:#f1f2f4;--card:#fff;--text:#07152f;--muted:#64748b;--line:#dfe3ea;--blue:#2463eb;--green:#009667;--red:#dc2626;--orange:#f59e0b}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px system-ui,-apple-system,Segoe UI,sans-serif}.app{max-width:1200px;margin:auto;padding:max(14px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) max(14px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left))}header,.row{display:flex;align-items:center;gap:10px}header{justify-content:space-between;margin-bottom:15px}.brand{display:flex;align-items:center;gap:10px}.brand img{width:48px;border-radius:13px}h1{font-size:21px;margin:0}h2,h3{margin:0 0 12px}.muted{font-size:13px;color:var(--muted)}.card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:15px;box-shadow:0 8px 24px #0f172a0c}.grid{display:grid;grid-template-columns:2fr 1fr;gap:15px}.two,.stats{display:grid;grid-template-columns:1fr 1fr;gap:12px}.stats{grid-template-columns:repeat(3,1fr)}button,input,select{min-height:44px;font:inherit;font-size:16px}button{border:0;border-radius:10px;padding:10px 13px;font-weight:750;cursor:pointer}.primary{background:var(--blue);color:#fff}.danger{background:#fff0f0;color:var(--red)}.ghost{background:#eef2f7;color:var(--text)}input,select{border:1px solid var(--line);border-radius:10px;padding:9px;background:#fff}.grow{flex:1}.wrap{flex-wrap:wrap}.between{justify-content:space-between}.hidden{display:none!important}nav{display:flex;background:#fff;border-radius:14px;padding:4px}nav button{background:transparent;color:var(--muted)}nav .on{background:#eaf2ff;color:#1d4ed8}.view{display:none}.view.on{display:block}.pill{padding:7px 10px;background:#edf4ff;color:#1746a2;border-radius:999px}.table{overflow:auto;border:1px solid var(--line);border-radius:12px;margin-top:12px}table{border-collapse:collapse;width:100%;min-width:620px}th,td{padding:9px;text-align:center;border-bottom:1px solid var(--line)}th{background:#f8fafc}.score{width:78px;text-align:center}.score.open{border-color:var(--orange);background:#fff9ed}.total td{background:#eefbf6;font-weight:900}.cash td{background:#eef5ff;color:#1d4ed8;font-weight:900}.bar{display:grid;grid-template-columns:85px 1fr auto;gap:8px;align-items:center;margin:10px 0}.track{height:12px;background:#e5e7eb;border-radius:99px;overflow:hidden}.fill{height:100%;background:linear-gradient(90deg,#2463eb,#66a7f6)}.stat{border:1px solid var(--line);border-radius:13px;padding:14px}.stat b{display:block;font-size:22px;margin-top:5px}.green{color:var(--green)}.item{border:1px solid var(--line);border-radius:12px;padding:12px;margin:9px 0}.notice{padding:10px;border-radius:10px;background:#edf4ff;color:#1746a2}.error{background:#fff0f0;color:#991b1b}.toast{position:fixed;right:14px;bottom:max(14px,env(safe-area-inset-bottom));background:#07152f;color:#fff;padding:11px;border-radius:10px;opacity:0}.toast.on{opacity:1}.modalbg{display:none;position:fixed;inset:0;background:#07152f99;place-items:center;padding:15px}.modalbg.on{display:grid}.modal{background:#fff;padding:20px;border-radius:16px;max-width:560px;width:100%}@media(max-width:760px){header{flex-direction:column;align-items:flex-start}nav{width:100%}nav button{flex:1}.grid,.two,.stats{grid-template-columns:1fr}.card{padding:14px}}
-</style></head><body><div class="app"><header><div class="brand"><img src="icons/icon-192.png" alt=""><div><h1>UNO Punkte & Kasse</h1><div class="muted">V10 · gemeinsam · live synchronisiert</div></div></div><div id="userBox" class="row hidden"><span id="userEmail" class="muted"></span><button id="logout" class="ghost">Abmelden</button></div></header>
-<section id="setupNotice" class="card notice hidden"></section>
-<section id="auth" class="card"><h2>Anmelden</h2><div class="two"><div><h3>Einloggen</h3><div class="row wrap"><input id="loginEmail" class="grow" type="email" placeholder="E-Mail"><input id="loginPassword" class="grow" type="password" placeholder="Passwort"><button id="login" class="primary">Einloggen</button></div></div><div><h3>Neues Konto</h3><div class="row wrap"><input id="signupName" class="grow" placeholder="Anzeigename"><input id="signupEmail" class="grow" type="email" placeholder="E-Mail"><input id="signupPassword" class="grow" type="password" placeholder="Passwort"><button id="signup" class="primary">Registrieren</button></div></div></div></section>
-<section id="groupArea" class="card hidden"><h2>Spielgruppe</h2><div class="two"><div><h3>Gruppe anlegen</h3><div class="row wrap"><input id="groupName" class="grow" placeholder="z. B. UNO-Abend"><button id="createGroup" class="primary">Anlegen</button></div></div><div><h3>Gruppe beitreten</h3><div class="row wrap"><input id="joinCode" class="grow" placeholder="Einladungscode"><button id="joinGroup" class="primary">Beitreten</button></div></div></div><div id="groups" style="margin-top:15px"></div></section>
-<section id="main" class="hidden"><div class="card row between wrap"><div><b id="activeGroupName"></b><div class="muted">Einladungscode: <span id="activeCode"></span></div></div><button id="changeGroup" class="ghost">Gruppe wechseln</button></div><nav><button class="on" data-v="game">Spiel</button><button data-v="history">Historie</button><button data-v="bank">Kasse</button><button data-v="members">Mitglieder</button></nav>
-<section id="game" class="view on" style="margin-top:15px"><div class="grid"><div class="card"><div class="row between wrap"><h2>Aktueller Spielabend</h2><button id="newGame" class="primary">Neuen Abend starten</button></div><div id="gameMeta"></div><div id="gamePlayers" class="row wrap" style="margin:12px 0"></div><div id="scoreArea"></div></div><aside class="card"><h3>Tagesübersicht</h3><div id="summary"></div><button id="finish" class="primary" style="width:100%;margin-top:14px">Spielabend beenden</button></aside></div></section>
-<section id="history" class="view" style="margin-top:15px"><div class="card"><h2>Gemeinsame Historie</h2><div id="historyStats" class="two"></div><div id="historyList"></div></div></section>
-<section id="bank" class="view" style="margin-top:15px"><div class="card"><h2>Gemeinsame Kasse</h2><div id="bankStats" class="stats"></div></div><div class="card"><h3>Soll-Beträge je Spieler</h3><div id="bankBars"></div></div></section>
-<section id="members" class="view" style="margin-top:15px"><div class="card"><h2>Mitglieder</h2><div id="memberList"></div></div></section></section></div><div id="toast" class="toast"></div><div id="modalbg" class="modalbg"><div id="modal" class="modal"></div></div><script type="module" src="app.js"></script></body></html>
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#2463eb">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="UNO Kasse">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="manifest" href="manifest.json">
+<title>UNO Punkte & Kasse V11</title>
+<style>
+:root{--bg:#f1f2f4;--line:#dfe3ea;--text:#07152f;--muted:#64748b;--blue:#2463eb;--green:#009667;--red:#dc2626;--orange:#f59e0b}
+*{box-sizing:border-box}
+html,body{margin:0;max-width:100%;overflow-x:hidden}
+body{background:var(--bg);color:var(--text);font:15px system-ui,-apple-system,"Segoe UI",sans-serif}
+.app{max-width:1150px;margin:auto;padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))}
+header{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px}.brand img{width:46px;height:46px;border-radius:12px}
+h1{font-size:20px;margin:0}h2{font-size:20px;margin:0 0 12px}h3{font-size:16px;margin:0 0 10px}
+.muted{color:var(--muted);font-size:13px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 6px 20px #0f172a0a}
+.row{display:flex;align-items:center;gap:8px}.wrap{flex-wrap:wrap}.between{justify-content:space-between}
+.grid{display:grid;grid-template-columns:2fr 1fr;gap:14px}.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+button,input{font:inherit;font-size:16px;min-height:44px}
+button{border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer;background:#e9edf3;color:var(--text)}
+button:disabled{opacity:.55;cursor:wait}
+.primary{background:var(--blue);color:#fff}.danger{background:#fff0f0;color:var(--red)}
+input{border:1px solid var(--line);border-radius:10px;padding:9px 10px;background:#fff;width:100%}
+.field{display:grid;gap:8px}
+.hidden{display:none!important}
+nav{display:flex;background:#fff;border-radius:12px;padding:4px;margin-bottom:14px;border:1px solid var(--line)}
+nav button{flex:1;background:transparent;color:var(--muted)}nav button.on{background:#eaf2ff;color:#1d4ed8}
+.view{display:none}.view.on{display:block}
+.pill{display:inline-block;padding:6px 10px;background:#edf4ff;color:#1746a2;border-radius:999px;margin:2px}
+.tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:12px;margin-top:10px}
+table{border-collapse:collapse;width:max-content;min-width:100%}
+th,td{padding:8px 6px;text-align:center;border-bottom:1px solid var(--line);white-space:nowrap}th{background:#f8fafc;font-size:13px}
+.score{width:72px;text-align:center}.score.open{border-color:var(--orange);background:#fff9ed}
+.total td{background:#eefbf6;font-weight:800}.cash td{background:#eef5ff;color:#1d4ed8;font-weight:800}
+.bar{display:grid;grid-template-columns:90px 1fr auto;gap:8px;align-items:center;margin:9px 0}
+.track{height:12px;background:#e5e7eb;border-radius:99px;overflow:hidden}.fill{height:100%;background:linear-gradient(90deg,#2463eb,#66a7f6)}
+.stat{border:1px solid var(--line);border-radius:12px;padding:12px}.stat b{display:block;font-size:20px;margin-top:4px}
+.green{color:var(--green)}
+.item{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:8px 0}
+.notice{padding:12px;border-radius:12px;background:#edf4ff;color:#1746a2;margin-bottom:14px}
+.notice.error{background:#fff0f0;color:#991b1b}
+.status{min-height:20px;margin-top:8px;font-size:14px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:max(16px,env(safe-area-inset-bottom));background:#07152f;color:#fff;padding:11px 14px;border-radius:10px;opacity:0;pointer-events:none;transition:.2s;max-width:92%;z-index:50}
+.toast.on{opacity:1}
+@media(max-width:760px){.grid,.two,.stats{grid-template-columns:1fr}.card{padding:13px}.bar{grid-template-columns:70px 1fr auto;font-size:13px}.summaryCard{order:-1}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand"><img src="icons/icon-192.png" alt=""><div><h1>UNO Punkte &amp; Kasse</h1><div class="muted">V11 · gemeinsam · live synchronisiert</div></div></div>
+    <div id="userBox" class="row hidden"><span id="userEmail" class="muted"></span><button id="logout" type="button">Abmelden</button></div>
+  </header>
+
+  <div id="banner" class="notice">App wird geladen …</div>
+
+  <section id="auth" class="card hidden">
+    <div class="two">
+      <div class="field">
+        <h2>Einloggen</h2>
+        <input id="loginEmail" type="email" autocomplete="email" placeholder="E-Mail">
+        <input id="loginPassword" type="password" autocomplete="current-password" placeholder="Passwort">
+        <button id="login" type="button" class="primary">Einloggen</button>
+        <div id="loginStatus" class="status muted"></div>
+      </div>
+      <div class="field">
+        <h2>Neues Konto</h2>
+        <input id="signupName" placeholder="Anzeigename (z. B. Philipp)">
+        <input id="signupEmail" type="email" autocomplete="email" placeholder="E-Mail">
+        <input id="signupPassword" type="password" autocomplete="new-password" placeholder="Passwort (mind. 8 Zeichen)">
+        <button id="signup" type="button" class="primary">Registrieren</button>
+        <div id="signupStatus" class="status muted"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="groupArea" class="card hidden">
+    <h2>Spielgruppe</h2>
+    <div class="two">
+      <div class="field"><h3>Gruppe anlegen</h3><input id="groupName" placeholder="z. B. UNO-Abend"><button id="createGroup" type="button" class="primary">Anlegen</button></div>
+      <div class="field"><h3>Gruppe beitreten</h3><input id="joinCode" placeholder="Einladungscode"><button id="joinGroup" type="button" class="primary">Beitreten</button></div>
+    </div>
+    <h3 style="margin-top:16px">Meine Gruppen</h3>
+    <div id="groups" class="row wrap"></div>
+  </section>
+
+  <section id="main" class="hidden">
+    <div class="card row between wrap">
+      <div><b id="activeGroupName"></b><div class="muted">Einladungscode: <b id="activeCode"></b></div></div>
+      <button id="changeGroup" type="button">Gruppe wechseln</button>
+    </div>
+    <nav>
+      <button type="button" class="on" data-v="game">Spiel</button>
+      <button type="button" data-v="history">Historie</button>
+      <button type="button" data-v="bank">Kasse</button>
+      <button type="button" data-v="members">Mitglieder</button>
+    </nav>
+
+    <section id="game" class="view on">
+      <div class="grid">
+        <div class="card">
+          <div class="row between wrap"><h2>Aktueller Spielabend</h2><button id="newGame" type="button" class="primary">Neuen Abend starten</button></div>
+          <div id="gameMeta"></div>
+          <div id="scoreArea"></div>
+        </div>
+        <aside class="card summaryCard">
+          <h3>Tagesübersicht</h3>
+          <div id="summary" class="muted">Kein aktiver Spielabend.</div>
+          <button id="finish" type="button" class="primary" style="width:100%;margin-top:12px">Spielabend beenden</button>
+        </aside>
+      </div>
+    </section>
+
+    <section id="history" class="view">
+      <div class="two" id="historyStats"></div>
+      <div class="card"><h2>Gespielte Abende</h2><div id="historyList"></div></div>
+    </section>
+
+    <section id="bank" class="view">
+      <div class="card"><h2>Gemeinsame Kasse</h2><div id="bankStats" class="stats"></div></div>
+      <div class="card"><h3>Einzahlungen je Spieler</h3><div id="bankBars"></div></div>
+    </section>
+
+    <section id="members" class="view">
+      <div class="card"><h2>Mitglieder</h2><div id="memberList"></div></div>
+    </section>
+  </section>
+</div>
+<div id="toast" class="toast"></div>
+
+<!-- Supabase-Bibliothek (klassisches Skript, stellt window.supabase bereit) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+<script src="app.js?v=11" defer></script>
+</body>
+</html>
